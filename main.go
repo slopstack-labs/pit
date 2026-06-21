@@ -31,6 +31,7 @@ Usage:
   pit log                  Show the prompt log
   pit show <n>             Print the text of prompt number n
   pit build [flags]        Rebuild the project from the prompt log
+  pit config [flags]       Show or update repository configuration
   pit help                 Show this help
 
 The prompts in .pit/prompts are the source of truth. 'pit build' replays them in
@@ -47,7 +48,12 @@ Backends (set with 'pit init --backend B', 'pit build --backend B', or the
 build flags:
   --out DIR        Output directory (overrides out_dir)
   --backend B      Build backend (overrides config)
-  --model M        Model for the api backend (overrides config)`
+  --model M        Model for the api backend (overrides config)
+
+config flags:
+  --backend B      Set the default build backend
+  --model M        Set the default model
+  --out DIR        Set the default output directory`
 
 func main() {
 	if len(os.Args) < 2 {
@@ -68,6 +74,8 @@ func main() {
 		err = cmdShow(args)
 	case "build":
 		err = cmdBuild(args)
+	case "config":
+		err = cmdConfig(args)
 	case "help", "-h", "--help":
 		fmt.Println(usage)
 	default:
@@ -143,7 +151,7 @@ func scaffoldGit(dir, outDir string) error {
 
 	readmePath := filepath.Join(dir, "README.md")
 	if _, err := os.Stat(readmePath); os.IsNotExist(err) {
-		readme := fmt.Sprintf("# %s\n\n> Describe what this project does.\n\nBuilt with [pit](https://github.com/Toemmsen96/pit) — prompts are the source of truth.\n", projectName)
+		readme := fmt.Sprintf("# %s\n\n> Describe what this project does.\n\nBuilt with [pit](https://github.com/slopstack-labs/pit) — prompts are the source of truth.\n", projectName)
 		if err := os.WriteFile(readmePath, []byte(readme), 0o644); err != nil {
 			return err
 		}
@@ -260,6 +268,63 @@ func cmdShow(args []string) error {
 		}
 	}
 	return fmt.Errorf("no prompt #%d", n)
+}
+
+func cmdConfig(args []string) error {
+	r, err := repo.Find(".")
+	if err != nil {
+		return err
+	}
+	cfg, err := r.Config()
+	if err != nil {
+		return err
+	}
+
+	if len(args) == 0 {
+		fmt.Printf("backend: %s\n", cfg.Backend)
+		fmt.Printf("model:   %s\n", cfg.Model)
+		fmt.Printf("out_dir: %s\n", cfg.OutDir)
+		return nil
+	}
+
+	changed := false
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--backend", "-b":
+			if i+1 >= len(args) {
+				return fmt.Errorf("--backend requires a value")
+			}
+			cfg.Backend = args[i+1]
+			i++
+			changed = true
+		case "--model", "-m":
+			if i+1 >= len(args) {
+				return fmt.Errorf("--model requires a value")
+			}
+			cfg.Model = args[i+1]
+			i++
+			changed = true
+		case "--out", "-o":
+			if i+1 >= len(args) {
+				return fmt.Errorf("--out requires a directory")
+			}
+			cfg.OutDir = args[i+1]
+			i++
+			changed = true
+		default:
+			return fmt.Errorf("unknown flag %q", args[i])
+		}
+	}
+
+	if changed {
+		if err := r.SetConfig(cfg); err != nil {
+			return err
+		}
+		fmt.Printf("backend: %s\n", cfg.Backend)
+		fmt.Printf("model:   %s\n", cfg.Model)
+		fmt.Printf("out_dir: %s\n", cfg.OutDir)
+	}
+	return nil
 }
 
 func cmdBuild(args []string) error {
