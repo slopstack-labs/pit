@@ -144,6 +144,10 @@ Route build intent through any agent (Cursor, aider, a different flag set) via t
 - The output directory is fully regenerated each build; don't hand-edit it — edit the prompts instead.
 - `build/` is a generated artifact. `pit init` adds it to `.gitignore` automatically.
 
+
+## Example project
+[Toemmsen96/pittest](https://github.com/Toemmsen96/pittest)
+
 ---
 
 <sub>This is a real tool that actually works. Mostly. Results vary by model, prompt quality, and the position of the moon.</sub>
